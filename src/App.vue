@@ -117,7 +117,7 @@ function createInfoElement(
 ): HTMLDivElement {
   const element = document.createElement("div");
   element.innerHTML = `
-    <div data-v-7a7a37b1="" class="q-card q-card--bordered q-card--flat no-shadow my-card" style="width: 350px;">
+    <div data-v-7a7a37b1="" class="q-card q-card--bordered q-card--flat no-shadow my-card" style="width: 250px;">
       <div data-v-7a7a37b1="" class="q-img q-img--menu" role="img">
         <div style="padding-bottom: 66.5455%;"></div>
         <div class="q-img__container absolute-full">
