@@ -1,6 +1,7 @@
 <template>
   <div id="app">
     <!-- 地図コンテナ -->
+    <!-- 座標のXY軸逆なんでw -->
     <div id="map-container"></div>
   </div>
 </template>
@@ -13,23 +14,21 @@ import Overlay from "ol/Overlay";
 import TileLayer from "ol/layer/Tile";
 import OSM from "ol/source/OSM";
 import { fromLonLat } from "ol/proj";
+import RestaurantData from "./Restaurant.json"; // JSONデータのインポート
 import "ol/ol.css";
 
 // 初期表示する中心位置の緯度と経度
 const initialCenter = fromLonLat([135.49894802573942, 34.68264934296536]);
 
 // マーカーの位置
-const markerPosition = ref(initialCenter);
+const markerPositions = ref<Overlay[]>([]);
 
 onMounted(() => {
   // 地図オブジェクトの初期化
   const map = initializeMap();
 
   // マーカーを地図に追加する
-  addMarker(map);
-
-  // マーカーがクリックされたときの処理を設定する
-  setupMarkerClickHandler(map);
+  addMarkers(map);
 
   // 地図全体をクリックしたときの処理を設定する
   setupMapClickHandler(map);
@@ -57,14 +56,44 @@ function initializeMap(): Map {
 /**
  * マーカーを地図に追加する関数
  */
-function addMarker(map: Map): void {
-  const markerOverlay = new Overlay({
-    position: markerPosition.value,
-    positioning: "center-center",
-    element: createMarkerElement(),
-    stopEvent: false,
+function addMarkers(map: Map): void {
+  RestaurantData.forEach((restaurant: any) => {
+    const position = fromLonLat(restaurant.markerPosition);
+    const markerOverlay = new Overlay({
+      position: position,
+      positioning: "center-center",
+      element: createMarkerElement(),
+      stopEvent: false,
+    });
+
+    // ピンがクリックされたときの処理を設定する
+    markerOverlay.getElement()?.addEventListener("click", () => {
+      // クリックされた位置に既にオーバーレイが存在するかどうかを確認
+      const existingOverlay = map.getOverlayById("info-overlay");
+
+      // 既に表示されているオーバーレイがあれば削除する
+      if (existingOverlay) {
+        map.removeOverlay(existingOverlay);
+      }
+
+      // クリックされた位置にオーバーレイで情報を表示する
+      const infoOverlay = new Overlay({
+        id: "info-overlay", // オーバーレイにIDを設定することで識別する
+        position: position,
+        element: createInfoElement(
+          restaurant.name,
+          restaurant.imgPath,
+          restaurant.description,
+          restaurant.url
+        ),
+        autoPan: true,
+      });
+      map.addOverlay(infoOverlay);
+    });
+
+    map.addOverlay(markerOverlay);
+    markerPositions.value.push(markerOverlay);
   });
-  map.addOverlay(markerOverlay);
 }
 
 /**
@@ -78,50 +107,55 @@ function createMarkerElement(): HTMLDivElement {
 }
 
 /**
- * マーカーがクリックされたときの処理を設定する関数
- */
-function setupMarkerClickHandler(map: Map): void {
-  const markerOverlay = map.getOverlays().item(0); // マーカーオーバーレイは最初の要素として追加されていると仮定する
-
-  markerOverlay?.getElement()?.addEventListener("click", () => {
-    const clickedCoordinate = markerOverlay.getPosition() as [number, number]; // 明示的に型を指定する
-
-    if (clickedCoordinate) {
-      // クリックされた位置に既にオーバーレイが存在するかどうかを確認
-      const existingOverlay = map.getOverlayById("info-overlay");
-
-      // 既に表示されているオーバーレイがあれば削除する
-      if (existingOverlay) {
-        map.removeOverlay(existingOverlay);
-      }
-
-      // クリックされた位置にオーバーレイで情報を表示する
-      const infoOverlay = new Overlay({
-        id: "info-overlay", // オーバーレイにIDを設定することで識別する
-        position: clickedCoordinate,
-        element: createInfoElement(clickedCoordinate),
-        autoPan: true, // autoPan のみを設定する
-      });
-      map.addOverlay(infoOverlay);
-    }
-  });
-}
-
-/**
  * 情報ウィンドウの要素を作成する関数
  */
 function createInfoElement(
-  clickedCoordinate: [number, number]
+  name: string,
+  imgPath: string,
+  description: string,
+  url: string
 ): HTMLDivElement {
   const element = document.createElement("div");
   element.innerHTML = `
-    <div style="background-color: white; padding: 10px;">
-      <h4>場所の情報</h4>
-      <p>緯度: ${clickedCoordinate[1]}</p>
-      <p>経度: ${clickedCoordinate[0]}</p>
+    <div data-v-7a7a37b1="" class="q-card q-card--bordered q-card--flat no-shadow my-card" style="width: 350px;">
+      <div data-v-7a7a37b1="" class="q-img q-img--menu" role="img">
+        <div style="padding-bottom: 66.5455%;"></div>
+        <div class="q-img__container absolute-full">
+          <img class="q-img__image q-img__image--with-transition q-img__image--loaded" loading="lazy" fetchpriority="auto" aria-hidden="true" draggable="false" src="${imgPath}" style="object-fit: cover; object-position: 50% 50%;">
+        </div>
+        <div class="q-img__content absolute-full q-anchor--skip"></div>
+      </div>
+      <div data-v-7a7a37b1="" class="q-card__section q-card__section--vert">
+        <a href="${url}" target="_blank" rel="noopener noreferrer">
+          <button data-v-7a7a37b1="" class="q-btn q-btn-item non-selectable no-outline q-btn--standard q-btn--rectangle q-btn--rounded bg-primary text-white q-btn--actionable q-focusable q-hoverable q-btn--fab absolute" tabindex="0" type="button" style="top: 0px; right: 12px; transform: translateY(-50%);">
+            <span class="q-focus-helper"></span>
+            <span class="q-btn__content text-center col items-center q-anchor--skip justify-center row">
+              <i class="q-icon notranslate material-icons" aria-hidden="true" role="img">place</i>
+            </span>
+          </button>
+        </a>
+        <div data-v-7a7a37b1="" class="row no-wrap items-center">
+          <div data-v-7a7a37b1="" class="col text-h6 ellipsis">${name}</div>
+        </div>
+        <div data-v-7a7a37b1="" class="text-subtitle1" style="margin-top: 20px;">${description}</div>
+      </div>
     </div>
   `;
+
+  // ボタンにクリックイベントを追加する
+  const button = element.querySelector("button");
+  button?.addEventListener("click", () => {
+    handleButtonClick(url);
+  });
+
   return element;
+}
+
+/**
+ * ボタンクリック時の処理
+ */
+function handleButtonClick(url: string): void {
+  window.open(url, "_blank"); // 新しいタブでリンクを開く
 }
 
 /**
